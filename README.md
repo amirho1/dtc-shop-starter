@@ -61,9 +61,53 @@ The fastest way to get started is deploying with [Medusa Cloud](https://cloud.me
 1. [Create a Medusa Cloud account](https://cloud.medusajs.com)
 2. Deploy this starter directly from your dashboard
 
+### Local Installation with Docker
+
+> **Prerequisites:**
+>
+> - [Docker](https://docs.docker.com/get-docker/)
+> - [Docker Compose](https://docs.docker.com/compose/)
+
+1. Copy environment files:
+
+```bash
+cp apps/backend/.env.template apps/backend/.env
+cp apps/storefront/.env.template apps/storefront/.env
+```
+
+2. Start PostgreSQL, Redis, the Medusa backend, and the storefront:
+
+```bash
+pnpm docker:up
+```
+
+3. Watch logs until the backend is ready (`Server is ready on port: 9000`):
+
+```bash
+docker compose logs -f
+```
+
+4. Create an admin user:
+
+```bash
+docker compose exec medusa sh -c "cd /server/apps/backend && pnpm medusa user -e admin@test.com -p supersecret"
+```
+
+5. Copy the publishable API key printed after migrations into `apps/storefront/.env` as `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, then recreate the storefront container:
+
+```bash
+docker compose up storefront -d
+```
+
+Admin: `http://localhost:9000/app`  
+Storefront: `http://localhost:8000`  
+Health: `http://localhost:9000/health`
+
+Stop everything with `pnpm docker:down`.
+
 ### Local Installation
 
-> **Prerequisites:
+> **Prerequisites:**
 >
 > - [Node.js](https://nodejs.org/) v20+
 > - [PostgreSQL](https://www.postgresql.org/) v15+
