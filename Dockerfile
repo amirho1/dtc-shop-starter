@@ -2,10 +2,15 @@
 
 FROM node:24-bookworm-slim AS base
 
+ARG NPM_REGISTRY=https://package-mirror.liara.ir/repository/npm/
+ARG PNPM_VERSION=10.11.1
+
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
+ENV NPM_CONFIG_REGISTRY=$NPM_REGISTRY
 
-RUN npm config set registry https://package-mirror.liara.ir/repository/npm/ --global && npm install --global pnpm
+RUN npm install --global "pnpm@$PNPM_VERSION" \
+  && test "$(pnpm --version)" = "$PNPM_VERSION"
 
 WORKDIR /server
 
@@ -16,8 +21,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/storefront/package.json ./apps/storefront/package.json
 
-RUN npm config set registry https://package-mirror.liara.ir/repository/npm/ --global 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store  pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install --frozen-lockfile
 
 
 FROM dependencies AS backend-builder
@@ -45,8 +50,7 @@ RUN DATABASE_URL=postgres://medusa:build-only@127.0.0.1:5432/medusa \
   FILE_PROVIDER=local \
   pnpm --filter @dtc/backend build
 
-RUN pnpm config set registry https://package-mirror.liara.ir/repository/npm/ --global
-RUN  --mount=type=cache,id=pnpm,target=/pnpm/store \
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm --dir apps/backend/.medusa/server install \
     --prod \
     --ignore-workspace \
