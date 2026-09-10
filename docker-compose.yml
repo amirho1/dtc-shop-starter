@@ -1,61 +1,113 @@
+x-medusa-environment: &medusa-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 9000
+  DATABASE_URL: postgres://${POSTGRES_USER:-medusa}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Dokploy}@postgres:5432/${POSTGRES_DB:-medusa}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379
+  CACHE_REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379
+  LOCKING_REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379
+  STORE_CORS: ${STORE_CORS:-https://shop.web-father.ir}
+  ADMIN_CORS: ${ADMIN_CORS:-https://api.shop.web-father.ir}
+  AUTH_CORS: ${AUTH_CORS:-https://shop.web-father.ir,https://api.shop.web-father.ir}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dokploy}
+  COOKIE_SECRET: ${COOKIE_SECRET:?Set COOKIE_SECRET in Dokploy}
+  MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+  MEDUSA_STOREFRONT_URL: ${MEDUSA_STOREFRONT_URL:-https://shop.web-father.ir}
+  DATABASE_SSL: ${DATABASE_SSL:-false}
+  DATABASE_SSL_REJECT_UNAUTHORIZED: ${DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
+  FILE_PROVIDER: ${FILE_PROVIDER:-local}
+  S3_FILE_URL: ${S3_FILE_URL:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_REGION: ${S3_REGION:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_PREFIX: ${S3_PREFIX:-}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  MEDUSA_DISABLE_TELEMETRY: ${MEDUSA_DISABLE_TELEMETRY:-true}
+
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: dtc_starter_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: medusa-store
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-medusa}
+      POSTGRES_USER: ${POSTGRES_USER:-medusa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Dokploy}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d medusa-store"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 10s
     networks:
-      - medusa_network
+      - medusa-internal
 
   redis:
     image: redis:7-alpine
-    container_name: dtc_starter_redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
+    command:
+      - /bin/sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    volumes:
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 10s
     networks:
-      - medusa_network
+      - medusa-internal
 
-  medusa:
-    build: .
-    container_name: dtc_starter_backend
-    restart: unless-stopped
+  medusa-migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+      args:
+        MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+        MEDUSA_STOREFRONT_URL: ${MEDUSA_STOREFRONT_URL:-https://shop.web-father.ir}
+    restart: "no"
+    environment:
+      <<: *medusa-environment
+      MEDUSA_WORKER_MODE: shared
+      DISABLE_MEDUSA_ADMIN: "true"
+    command: ["pnpm", "run", "predeploy"]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "9000:9000"
-      - "5173:5173"
+    networks:
+      - medusa-internal
+
+  medusa-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+      args:
+        MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+        MEDUSA_STOREFRONT_URL: ${MEDUSA_STOREFRONT_URL:-https://shop.web-father.ir}
+    restart: unless-stopped
     environment:
-      NODE_ENV: development
-      HOST: 0.0.0.0
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/medusa-store
-      REDIS_URL: redis://redis:6379
-    env_file:
-      - apps/backend/.env
+      <<: *medusa-environment
+      MEDUSA_WORKER_MODE: server
+      DISABLE_MEDUSA_ADMIN: "false"
+    expose:
+      - "9000"
     volumes:
-      - .:/server
-      - /server/node_modules
-      - /server/apps/backend/node_modules
+      - medusa_uploads:/server/static
+    depends_on:
+      medusa-migrations:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -64,43 +116,84 @@ services:
           "-e",
           "fetch('http://127.0.0.1:9000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 30
-      start_period: 90s
+      retries: 10
+      start_period: 60s
     networks:
-      - medusa_network
+      - medusa-internal
+
+  medusa-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+      args:
+        MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+        MEDUSA_STOREFRONT_URL: ${MEDUSA_STOREFRONT_URL:-https://shop.web-father.ir}
+    restart: unless-stopped
+    environment:
+      <<: *medusa-environment
+      MEDUSA_WORKER_MODE: worker
+      DISABLE_MEDUSA_ADMIN: "true"
+    volumes:
+      - medusa_uploads:/server/static
+    depends_on:
+      medusa-migrations:
+        condition: service_completed_successfully
+    networks:
+      - medusa-internal
 
   storefront:
-    build: .
-    container_name: dtc_starter_storefront
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: storefront
+      args:
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY in Dokploy}
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://shop.web-father.ir}
+        NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-dk}
+        NEXT_PUBLIC_STRIPE_KEY: ${NEXT_PUBLIC_STRIPE_KEY:-}
+        NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_MEDUSA_PAYMENTS_ACCOUNT_ID: ${NEXT_PUBLIC_MEDUSA_PAYMENTS_ACCOUNT_ID:-}
+        S3_FILE_URL: ${S3_FILE_URL:-}
+        MEDUSA_CLOUD_S3_HOSTNAME: ${MEDUSA_CLOUD_S3_HOSTNAME:-}
+        MEDUSA_CLOUD_S3_PATHNAME: ${MEDUSA_CLOUD_S3_PATHNAME:-}
     restart: unless-stopped
-    depends_on:
-      medusa:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
     environment:
-      NODE_ENV: development
-      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
-      NEXT_PUBLIC_BASE_URL: http://localhost:8000
-    env_file:
-      - apps/storefront/.env
-    extra_hosts:
-      - "localhost:host-gateway"
-    volumes:
-      - .:/server
-      - /server/node_modules
-      - /server/apps/backend/node_modules
-      - /server/apps/storefront/node_modules
-      - /server/apps/storefront/.next
-    entrypoint: ["./start-storefront.sh"]
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 8000
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY in Dokploy}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL:-https://api.shop.web-father.ir}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://shop.web-father.ir}
+      NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-dk}
+    expose:
+      - "8000"
+    depends_on:
+      medusa-server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8000/favicon.ico').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
-      - medusa_network
+      - medusa-internal
 
 volumes:
   postgres_data:
+  redis_data:
+  medusa_uploads:
 
 networks:
-  medusa_network:
+  medusa-internal:
     driver: bridge

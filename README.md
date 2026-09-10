@@ -54,6 +54,9 @@ A production-ready monorepo starter for direct-to-consumer ecommerce stores powe
 
 ## Getting Started
 
+For a production deployment on Dokploy, use the multi-stage `Dockerfile` and
+`docker-compose.yml` in this repository and follow [DOKPLOY.md](./DOKPLOY.md).
+
 ### Deploy with Medusa Cloud
 
 The fastest way to get started is deploying with [Medusa Cloud](https://cloud.medusajs.com):
@@ -61,49 +64,31 @@ The fastest way to get started is deploying with [Medusa Cloud](https://cloud.me
 1. [Create a Medusa Cloud account](https://cloud.medusajs.com)
 2. Deploy this starter directly from your dashboard
 
-### Local Installation with Docker
+### Production Docker / Dokploy
 
 > **Prerequisites:**
 >
 > - [Docker](https://docs.docker.com/get-docker/)
 > - [Docker Compose](https://docs.docker.com/compose/)
 
-1. Copy environment files:
+The root container configuration is production-only. Copy the example variable
+list, fill every required value, and build the Compose application:
 
 ```bash
-cp apps/backend/.env.template apps/backend/.env
-cp apps/storefront/.env.template apps/storefront/.env
-```
-
-2. Start PostgreSQL, Redis, the Medusa backend, and the storefront:
-
-```bash
+cp .env.production.example .env
 pnpm docker:up
 ```
 
-3. Watch logs until the backend is ready (`Server is ready on port: 9000`):
+Watch startup and migration logs with:
 
 ```bash
 docker compose logs -f
 ```
 
-4. Create an admin user:
-
-```bash
-docker compose exec medusa sh -c "cd /server/apps/backend && pnpm medusa user -e admin@test.com -p supersecret"
-```
-
-5. Copy the publishable API key printed after migrations into `apps/storefront/.env` as `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, then recreate the storefront container:
-
-```bash
-docker compose up storefront -d
-```
-
-Admin: `http://localhost:9000/app`  
-Storefront: `http://localhost:8000`  
-Health: `http://localhost:9000/health`
-
-Stop everything with `pnpm docker:down`.
+The stack intentionally publishes no host ports. Dokploy routes the storefront
+to container port `8000` and Medusa/Admin to container port `9000`. See
+[DOKPLOY.md](./DOKPLOY.md) for domains, first-deployment bootstrap, and the
+complete build-time/runtime environment-variable split.
 
 ### Local Installation
 

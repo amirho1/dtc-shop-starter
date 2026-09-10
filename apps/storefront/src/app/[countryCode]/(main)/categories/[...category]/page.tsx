@@ -20,30 +20,38 @@ type Props = {
 }
 
 export async function generateStaticParams() {
-  const product_categories = await listCategories()
+  try {
+    const productCategories = await listCategories()
 
-  if (!product_categories) {
+    if (!productCategories) {
+      return []
+    }
+
+    const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
+      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+    )
+
+    const categoryHandles = productCategories.map(
+      (category: HttpTypes.StoreProductCategory) => category.handle
+    )
+
+    return countryCodes
+      ?.map((countryCode: string | undefined) =>
+        categoryHandles.map((handle: string) => ({
+          countryCode,
+          category: [handle],
+        }))
+      )
+      .flat()
+  } catch (error) {
+    console.error(
+      `Failed to generate static category paths: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }.`
+    )
+
     return []
   }
-
-  const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-  )
-
-  const categoryHandles = product_categories.map(
-    (category: HttpTypes.StoreProductCategory) => category.handle
-  )
-
-  const staticParams = countryCodes
-    ?.map((countryCode: string | undefined) =>
-      categoryHandles.map((handle: string) => ({
-        countryCode,
-        category: [handle],
-      }))
-    )
-    .flat()
-
-  return staticParams
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
