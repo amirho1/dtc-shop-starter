@@ -6,6 +6,7 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
 RUN RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  npm config set registry https://package-mirror.liara.ir/repository/npm/ --global \
   pnpm install --frozen-lockfile
 
 WORKDIR /server
