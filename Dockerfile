@@ -5,7 +5,8 @@ FROM node:24-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN npm config set registry https://package-mirror.liara.ir/repository/npm/ --global && npm install --global pnpm@10.11.1
+RUN   npm config set registry https://package-mirror.liara.ir/repository/npm/ --global \
+ && npm install --global pnpm
 
 WORKDIR /server
 
@@ -17,8 +18,7 @@ COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/storefront/package.json ./apps/storefront/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  npm config set registry https://package-mirror.liara.ir/repository/npm/ --global \
-  pnpm install --frozen-lockfile
+  && pnpm install --frozen-lockfile
 
 
 FROM dependencies AS backend-builder
