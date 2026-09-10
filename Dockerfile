@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS base
+FROM node:24-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN apk add --no-cache libc6-compat \
-  && npm install --global pnpm@10.11.1
+RUN npm install --global pnpm@10.11.1
 
 WORKDIR /server
 
@@ -103,13 +102,11 @@ COPY apps/storefront ./apps/storefront
 RUN pnpm --filter @dtc/storefront build
 
 
-FROM node:22-alpine AS storefront
+FROM node:24-bookworm-slim
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=8000
-
-RUN apk add --no-cache libc6-compat
 
 WORKDIR /server
 
