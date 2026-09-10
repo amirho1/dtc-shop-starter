@@ -5,7 +5,7 @@ FROM node:24-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN   npm config set registry https://package-mirror.liara.ir/repository/npm/ --global && npm install --global pnpm
+RUN npm config set registry https://package-mirror.liara.ir/repository/npm/ --global && npm install --global pnpm
 
 WORKDIR /server
 
@@ -16,6 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/storefront/package.json ./apps/storefront/package.json
 
+RUN npm config set registry https://package-mirror.liara.ir/repository/npm/ --global 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store  pnpm install --frozen-lockfile
 
 
@@ -44,7 +45,8 @@ RUN DATABASE_URL=postgres://medusa:build-only@127.0.0.1:5432/medusa \
   FILE_PROVIDER=local \
   pnpm --filter @dtc/backend build
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+RUN pnpm config set registry https://package-mirror.liara.ir/repository/npm/ --global
+RUN  --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm --dir apps/backend/.medusa/server install \
     --prod \
     --ignore-workspace \
