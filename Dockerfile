@@ -102,7 +102,7 @@ COPY apps/storefront ./apps/storefront
 RUN pnpm --filter @dtc/storefront build
 
 
-FROM node:24-bookworm-slim
+FROM node:24-bookworm-slim AS storefront
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
