@@ -67,15 +67,17 @@ WORKDIR /server
 
 COPY --from=backend-builder --chown=node:node \
   /server/apps/backend/.medusa/server ./
+COPY develop.sh .
 
 RUN mkdir -p /server/static \
-  && chown node:node /server/static
+  && chown node:node /server/static \
+  && chmod +x develop.sh
 
 USER node
 
 EXPOSE 9000
 
-CMD ["pnpm", "start"]
+CMD ["./develop.sh"]
 
 
 FROM dependencies AS storefront-builder

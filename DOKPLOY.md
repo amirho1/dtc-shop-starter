@@ -17,6 +17,8 @@ are interpolated into connection URLs.
 | `REDIS_PASSWORD` | output of `openssl rand -hex 32` | Runtime |
 | `JWT_SECRET` | output of `openssl rand -hex 32` | Runtime |
 | `COOKIE_SECRET` | a different `openssl rand -hex 32` value | Runtime |
+| `MEDUSA_ADMIN_EMAIL` | `admin@example.com` | First server bootstrap |
+| `MEDUSA_ADMIN_PASSWORD` | a unique password from your secret manager | First server bootstrap |
 | `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | `pk_01...` | Storefront build and runtime |
 | `MEDUSA_BACKEND_URL` | `https://api.shop.web-father.ir` | Backend build and runtime |
 | `MEDUSA_STOREFRONT_URL` | `https://shop.web-father.ir` | Backend build and runtime |
@@ -43,6 +45,13 @@ The Compose file supplies these defaults, which can be overridden in Dokploy:
 | `DATABASE_SSL` | `false` for the internal PostgreSQL service |
 | `DATABASE_SSL_REJECT_UNAUTHORIZED` | `true` |
 | `FILE_PROVIDER` | `local` |
+| `MEDUSA_ADMIN_EMAIL` | `admin@medusa-test.com` |
+| `MEDUSA_ADMIN_PASSWORD` | development-only fallback in `docker-compose.yml` |
+
+Always override both admin defaults in Dokploy. The fallback password makes a
+local first boot convenient, but a value committed in Compose is not a
+production secret. After bootstrap, changing these variables does not rotate an
+existing administrator's credentials.
 
 Payment variables are optional and build-time public values. Set those required
 by the provider enabled in Medusa:
@@ -96,8 +105,10 @@ database has no key yet. Bootstrap without seeding production data:
 
 1. Set a temporary non-empty `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, deploy the
    stack, and wait for `medusa-migrations` to complete successfully.
-2. Create an administrator from Dokploy's terminal in `medusa-server`, for
-   example with `pnpm exec medusa user -e <email> -p <strong-password>`.
+2. The `medusa-server` startup script creates the administrator configured by
+   `MEDUSA_ADMIN_EMAIL` and `MEDUSA_ADMIN_PASSWORD`. On later boots, the
+   duplicate-email result is detected and startup continues without changing
+   the existing account.
 3. Open Medusa Admin, create a publishable API key, and associate it with the
    storefront's sales channel.
 4. Replace the temporary value in Dokploy and redeploy so the real key is
@@ -109,8 +120,9 @@ demand after deployment.
 
 ## Operational considerations
 
-- `medusa-migrations` runs `medusa db:migrate` once before server and worker
-  startup. It must exit successfully; the application services will not start
+- `medusa-migrations` runs `medusa db:migrate` before server and worker startup.
+  The server startup script repeats this idempotent check immediately before
+  admin bootstrap. Both must succeed; the application services will not start
   after a failed migration.
 - PostgreSQL, Redis (AOF), and local uploads use named volumes. Configure
   off-host backups in Dokploy; container restart policies are not backups.

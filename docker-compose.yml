@@ -101,11 +101,15 @@ services:
       <<: *medusa-environment
       MEDUSA_WORKER_MODE: server
       DISABLE_MEDUSA_ADMIN: "false"
+      MEDUSA_ADMIN_EMAIL: ${MEDUSA_ADMIN_EMAIL:-admin@medusa-test.com}
+      MEDUSA_ADMIN_PASSWORD: ${MEDUSA_ADMIN_PASSWORD:-Medusa_Admin#2026-ChangeMe!}
     expose:
       - "9000"
     volumes:
       - medusa_uploads:/server/static
     depends_on:
+      postgres:
+        condition: service_healthy
       medusa-migrations:
         condition: service_completed_successfully
     healthcheck:
@@ -136,6 +140,7 @@ services:
       <<: *medusa-environment
       MEDUSA_WORKER_MODE: worker
       DISABLE_MEDUSA_ADMIN: "true"
+    command: ["pnpm", "start"]
     volumes:
       - medusa_uploads:/server/static
     depends_on:
