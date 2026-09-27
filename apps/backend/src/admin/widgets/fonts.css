@@ -1,0 +1,14 @@
+@font-face {
+  font-family: "IRANYekan";
+  src: url("./fonts/IRANYekanXVF.ttf");
+}
+
+html,
+body,
+#medusa,
+button,
+input,
+textarea,
+select {
+  font-family: "IRANYekan", sans-serif !important;
+}
