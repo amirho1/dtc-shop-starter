@@ -120,19 +120,27 @@ module.exports = defineConfig({
     storefrontUrl: process.env.MEDUSA_STOREFRONT_URL,
     disable: process.env.DISABLE_MEDUSA_ADMIN === "true",
     vite: (config) => {
+      const serverConfig = {
+        host: "0.0.0.0",
+        allowedHosts: ["localhost", ".localhost", "127.0.0.1"],
+        hmr: {
+          ...(typeof config.server?.hmr === "object"
+            ? config.server.hmr
+            : {}),
+          port: 5173,
+          clientPort: 5173,
+        },
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        return { server: serverConfig }
+      }
+
       return {
         ...config,
         server: {
           ...config.server,
-          host: "0.0.0.0",
-          allowedHosts: ["localhost", ".localhost", "127.0.0.1"],
-          hmr: {
-            ...(typeof config.server?.hmr === "object"
-              ? config.server.hmr
-              : {}),
-            port: 5173,
-            clientPort: 5173,
-          },
+          ...serverConfig,
         },
       }
     },

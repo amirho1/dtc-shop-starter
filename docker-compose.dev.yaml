@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: medusa
+      POSTGRES_USER: medusa
+      POSTGRES_PASSWORD: medusa
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medusa -d medusa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  app:
+    image: node:24-bookworm
+    working_dir: /server
+    ports:
+      - "8001:8000"
+      - "9000:9000"
+      - "5173:5173"
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      HOSTNAME: 0.0.0.0
+      PORT: "9000"
+      DATABASE_URL: postgres://medusa:medusa@postgres:5432/medusa
+      DATABASE_SSL: "false"
+      REDIS_URL: redis://redis:6379
+      CACHE_REDIS_URL: redis://redis:6379
+      LOCKING_REDIS_URL: redis://redis:6379
+      JWT_SECRET: supersecret
+      COOKIE_SECRET: supersecret
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:5173,http://localhost:9000
+      AUTH_CORS: http://localhost:5173,http://localhost:9000
+      MEDUSA_BACKEND_URL: http://localhost:9000
+      MEDUSA_STOREFRONT_URL: http://localhost:8000
+      MEDUSA_WORKER_MODE: shared
+      DISABLE_MEDUSA_ADMIN: "false"
+      MEDUSA_ADMIN_EMAIL: admin@medusa-test.com
+      MEDUSA_ADMIN_PASSWORD: Medusa_Admin#2026-ChangeMe!
+      FILE_PROVIDER: local
+      MEDUSA_DISABLE_TELEMETRY: "true"
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      NEXT_PUBLIC_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_DEFAULT_REGION: dk
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_a6659789b3902c09f7973ccce037487b4eb15d6d8fed8c5a873e1b518de5c5b1
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/server
+      - root_node_modules:/server/node_modules
+      - backend_node_modules:/server/apps/backend/node_modules
+      - storefront_node_modules:/server/apps/storefront/node_modules
+      - medusa_uploads:/server/static
+    command:
+      - sh
+      - -c
+      - corepack enable && corepack prepare pnpm@10.11.1 --activate && pnpm install --frozen-lockfile && pnpm --filter @dtc/backend run predeploy && pnpm dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  root_node_modules:
+  backend_node_modules:
+  storefront_node_modules:
+  medusa_uploads:

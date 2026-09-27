@@ -35,6 +35,18 @@ export default async function initial_data_seed({
     ModuleRegistrationName.FULFILLMENT
   );
 
+  if (process.env.NODE_ENV === "development") {
+    const { data: existingRegions } = await query.graph({
+      entity: "region",
+      fields: ["id"],
+    });
+
+    if (existingRegions.length > 0) {
+      logger.info("Skipping initial data seed because regions already exist.");
+      return;
+    }
+  }
+
   const countries = ["gb", "de", "dk", "se", "fr", "es", "it"];
 
   logger.info("Seeding store data...");
