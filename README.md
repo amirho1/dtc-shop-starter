@@ -51,6 +51,7 @@ A production-ready monorepo starter for direct-to-consumer ecommerce stores powe
 - Multi-step checkout with shipping and payment
 - Customer accounts with order history and address management
 - Order transfer between accounts
+- Medusa Admin with a locally hosted [Vazirmatn font](./apps/backend/src/admin/README.md#global-admin-font)
 
 ## Getting Started
 

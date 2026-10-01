@@ -46,6 +46,9 @@ create_default_admin() {
 
 start_server() {
   echo "Starting Medusa..."
+  # Compose mounts /server/static as a volume, which can hide image assets.
+  mkdir -p /server/static/fonts
+  cp /server/admin-fonts/Vazirmatn-VariableFont_wght.ttf /server/static/fonts/
   # Production uses `medusa start`. Use `medusa develop` only in a development
   # image where live reload and development dependencies are available.
   exec pnpm exec medusa start

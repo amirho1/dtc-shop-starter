@@ -67,6 +67,9 @@ WORKDIR /server
 
 COPY --from=backend-builder --chown=node:node \
   /server/apps/backend/.medusa/server ./
+COPY --from=backend-builder --chown=node:node \
+  /server/apps/backend/static/fonts/Vazirmatn-VariableFont_wght.ttf \
+  /server/admin-fonts/Vazirmatn-VariableFont_wght.ttf
 COPY develop.sh .
 
 RUN mkdir -p /server/static \

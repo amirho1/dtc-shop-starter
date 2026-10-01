@@ -36,11 +36,11 @@ services:
       LOCKING_REDIS_URL: redis://redis:6379
       JWT_SECRET: supersecret
       COOKIE_SECRET: supersecret
-      STORE_CORS: http://localhost:8000
+      STORE_CORS: http://localhost:8000,http://localhost:8001
       ADMIN_CORS: http://localhost:5173,http://localhost:9000
-      AUTH_CORS: http://localhost:5173,http://localhost:9000
+      AUTH_CORS: http://localhost:5173,http://localhost:9000,http://localhost:8000,http://localhost:8001
       MEDUSA_BACKEND_URL: http://localhost:9000
-      MEDUSA_STOREFRONT_URL: http://localhost:8000
+      MEDUSA_STOREFRONT_URL: http://localhost:8001
       MEDUSA_WORKER_MODE: shared
       DISABLE_MEDUSA_ADMIN: "false"
       MEDUSA_ADMIN_EMAIL: admin@medusa-test.com
@@ -48,9 +48,9 @@ services:
       FILE_PROVIDER: local
       MEDUSA_DISABLE_TELEMETRY: "true"
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
-      NEXT_PUBLIC_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_BASE_URL: http://localhost:8001
       NEXT_PUBLIC_DEFAULT_REGION: dk
-      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_a6659789b3902c09f7973ccce037487b4eb15d6d8fed8c5a873e1b518de5c5b1
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: "pk_346d171a9c343c4bc00effc95d1d2c1dc101810047e687c09d0d3704a9507e72"
       NEXT_TELEMETRY_DISABLED: "1"
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"

@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig } from "@medusajs/framework/utils"
+import { persianAdminFont } from "./src/admin/plugins/persian-admin-font"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
@@ -132,12 +133,9 @@ module.exports = defineConfig({
         },
       }
 
-      if (process.env.NODE_ENV === "development") {
-        return { server: serverConfig }
-      }
-
       return {
         ...config,
+        plugins: [...(config.plugins || []), persianAdminFont()],
         server: {
           ...config.server,
           ...serverConfig,

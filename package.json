@@ -15,8 +15,8 @@
     "backend:dev": "turbo dev --filter=@dtc/backend",
     "storefront:dev": "turbo dev --filter=@dtc/storefront",
     "docker:up": "docker compose up --build -d",
+    "docker:dev": "docker compose -f docker-compose.dev.yaml up  --build -d",
     "docker:down": "docker compose down"
-
   },
   "pnpm": {
     "overrides": {
